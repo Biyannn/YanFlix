@@ -52,7 +52,7 @@ export default function HomeSection({ title, movies, mediaType }) {
               key={m.id}
               className="
                 snap-start
-                w-full            /* mobile: 1 poster */
+                w-1/3          /* mobile: 1 poster */
                 sm:w-1/3          /* tablet: ±3 poster */
                 lg:w-[180px]      /* desktop: fix 180px */
                 flex-shrink-0
