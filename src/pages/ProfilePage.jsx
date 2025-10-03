@@ -10,9 +10,10 @@ import { Link } from "react-router-dom";
 import { useAuthStore } from "../components/UserProfile/UseAuthStore";
 
 export default function ProfilePage() {
-  const { fetchMovies, draftMovies, loading, showModal, selectedMediaType } =
+  const { getUserDrafts, fetchMovies, loading, showModal, selectedMediaType } =
     useMovieStore();
   const { currentUser } = useAuthStore();
+  const draftMovies = getUserDrafts();
 
   useEffect(() => {
     fetchMovies();
@@ -23,11 +24,12 @@ export default function ProfilePage() {
   return (
     <>
       <Header />
-      <div className="bg-[#181A1C] text-white  px-6 md:px-16 py-10">
+      <div className="bg-[#181A1C] text-white px-6 md:px-16 py-10">
         <h2 className="font-bold text-3xl mb-8">Profil Saya</h2>
 
         <div className="flex flex-col gap-10">
           <div className="flex flex-col md:flex-row justify-between gap-10 md:gap-20">
+            {/* Avatar */}
             <div className="flex gap-6 items-center justify-center">
               <img
                 src="/assets/Avatar/profile2.png"
@@ -49,7 +51,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Card info */}
+            {/* Info Card */}
             <div className="bg-[#3D4142] p-6 rounded-xl flex flex-col gap-5 max-w-md">
               <div className="flex items-start gap-4">
                 <img
@@ -62,7 +64,8 @@ export default function ProfilePage() {
                     Saat ini anda belum berlangganan
                   </h4>
                   <p className="text-sm text-gray-300">
-                    Dapatkan Akses Tak Terbatas ke Ribuan Film dan Series Kesukaan Kamu!
+                    Dapatkan Akses Tak Terbatas ke Ribuan Film dan Series
+                    Kesukaan Kamu!
                   </p>
                 </div>
               </div>
@@ -85,13 +88,13 @@ export default function ProfilePage() {
               label="Email"
               type="text"
               placeholder="william1980@gmail.com"
-              defaultValue={currentUser?.name || ""}
+              defaultValue={currentUser?.username || ""}
               readOnly
             />
             <InputField
               label="Kata Sandi"
               type="password"
-              placeholder="************"
+              placeholder="***************"
               defaultValue={currentUser?.password || ""}
               readOnly
             />
@@ -102,20 +105,37 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="bg-[#181A1C] text-white px-6 md:px-16">
-        <HomeSection
-          title="My Draft"
-          movies={draftMovies.slice(0, 8)}
-          layout="carousel"
-          action={
-            <Link
-              to="/homepage/draft"
-              className="text-sm font-medium hover:text-[#3254FF] hover:underline transition"
-            >
-              See More
-            </Link>
-          }
-        />
+      {/* My Draft Section */}
+      <div className="bg-[#181A1C] text-white px-6 md:px-16 py-10">
+        {!currentUser ? (
+          // case: belum login/register
+          <p className="text-center text-gray-400 py-10">
+            Silahkan <span className="font-semibold">login</span> /{" "}
+            <span className="font-semibold">register</span> terlebih dahulu
+            untuk melihat Draft Anda.
+          </p>
+        ) : draftMovies.length === 0 ? (
+          // case: sudah login tapi draft kosong
+          <p className="text-center text-gray-400 py-10">
+            Draft Anda masih kosong, tambahkan film/series ke Draft lewat tombol{" "}
+            <span className="font-bold">+</span> di modal.
+          </p>
+        ) : (
+          // case: sudah login dan ada isi
+          <HomeSection
+            title="My Draft"
+            movies={draftMovies.slice(0, 8)}
+            layout="carousel"
+            action={
+              <Link
+                to="/homepage/draft"
+                className="text-sm font-medium hover:text-[#3254FF] hover:underline transition"
+              >
+                See More
+              </Link>
+            }
+          />
+        )}
       </div>
 
       {showModal && selectedMediaType === "movie" && <FilmDetailModal />}

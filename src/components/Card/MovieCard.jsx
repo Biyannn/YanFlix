@@ -47,3 +47,5 @@ export default function MovieCard({ movie, mediaType }) {
     </div>
   );
 }
+
+

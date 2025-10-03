@@ -1,21 +1,28 @@
-import { useEffect, useState } from "react";
 import axios from "axios";
 import { X } from "lucide-react";
-import { useMovieStore } from "../../store/useMovieStore";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useMovieStore } from "../../store/useMovieStore";
+import { useAuthStore } from "../UserProfile/UseAuthStore";
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = "https://api.themoviedb.org/3";
 
 export default function FilmDetailModal() {
-  const { selectedMovie, selectedMediaType, showModal, closeModal } =
-    useMovieStore();
+  const {
+    selectedMovie,
+    selectedMediaType,
+    showModal,
+    closeModal,
+    addToDraft,
+  } = useMovieStore();
+
+  const { currentUser } = useAuthStore();
   const [detail, setDetail] = useState(null);
   const [similar, setSimilar] = useState([]);
 
   useEffect(() => {
-    if (!selectedMovie) return;
-    if (selectedMediaType && selectedMediaType !== "movie") return;
+    if (!selectedMovie || selectedMediaType !== "movie") return;
 
     const fetchDetail = async () => {
       try {
@@ -24,7 +31,6 @@ export default function FilmDetailModal() {
         );
         setDetail(res.data);
 
-        // fetch rekomendasi
         const rec = await axios.get(
           `${BASE_URL}/movie/${selectedMovie.id}/similar?api_key=${API_KEY}`
         );
@@ -39,20 +45,25 @@ export default function FilmDetailModal() {
 
   if (!showModal || !selectedMovie) return null;
 
+  const handleAdd = () => {
+  if (!currentUser) {
+    alert("⚠️ Silahkan login dan register terlebih dahulu!");
+    return;
+  }
+  addToDraft(detail, "movie");
+};
+
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* overlay */}
       <div className="absolute inset-0 bg-black/70" onClick={closeModal}></div>
 
-      <div
-        className="relative z-10 w-full max-w-4xl mx-4 bg-[#0B0B0B] text-white rounded-2xl shadow-lg
-                      max-h-[80vh] overflow-y-auto"
-      >
+      <div className="relative z-10 w-full max-w-4xl mx-4 bg-[#0B0B0B] text-white rounded-2xl shadow-lg max-h-[80vh] overflow-y-auto">
         {/* tombol close */}
         <button
           onClick={closeModal}
-          className="absolute top-4 right-4 border border-white 
-                             bg-gray-500 rounded-full hover:bg-black/85 p-2 z-20"
+          className="absolute top-4 right-4 border border-white bg-gray-500 rounded-full hover:bg-black/85 p-2 z-20"
         >
           <X size={20} />
         </button>
@@ -68,9 +79,7 @@ export default function FilmDetailModal() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent"></div>
               <div className="absolute bottom-6 left-6">
-                <h2 className="text-2xl md:text-3xl font-bold">
-                  {detail.title}
-                </h2>
+                <h2 className="text-2xl md:text-3xl font-bold">{detail.title}</h2>
                 <Link
                   to={`/homepage/movie/${selectedMovie.id}`}
                   className="mt-2 px-4 py-2 border border-white hover:bg-blue-800 rounded-xl text-sm font-medium"
@@ -78,9 +87,10 @@ export default function FilmDetailModal() {
                   Mulai
                 </Link>
 
+                {/* Tombol + */}
                 <button
-                  className="mx-4 mt-2 px-2 py-1 border border-white 
-                            rounded-full hover:bg-white hover:text-black"
+                  onClick={handleAdd}
+                  className="mx-4 mt-2 px-2 py-1 border border-white rounded-full hover:bg-white hover:text-black"
                 >
                   +
                 </button>
@@ -89,7 +99,6 @@ export default function FilmDetailModal() {
 
             {/* Info utama */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* kiri */}
               <div className="space-y-3">
                 <p className="text-gray-400">
                   {detail.release_date?.slice(0, 4)} • {detail.runtime} min •{" "}
@@ -97,16 +106,11 @@ export default function FilmDetailModal() {
                 </p>
                 <p className="text-sm leading-relaxed">{detail.overview}</p>
               </div>
-
-              {/* kanan */}
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold">Cast</h3>
                   <p className="text-sm text-gray-300">
-                    {detail.credits?.cast
-                      ?.slice(0, 5)
-                      .map((actor) => actor.name)
-                      .join(", ")}
+                    {detail.credits?.cast?.slice(0, 5).map((a) => a.name).join(", ")}
                   </p>
                 </div>
                 <div>
@@ -118,8 +122,7 @@ export default function FilmDetailModal() {
                 <div>
                   <h3 className="font-semibold">Director</h3>
                   <p className="text-sm text-gray-300">
-                    {detail.credits?.crew?.find((p) => p.job === "Director")
-                      ?.name || "N/A"}
+                    {detail.credits?.crew?.find((p) => p.job === "Director")?.name || "N/A"}
                   </p>
                 </div>
               </div>

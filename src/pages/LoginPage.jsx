@@ -8,7 +8,7 @@ import { useAuthStore } from "../components/UserProfile/UseAuthStore";
 export function LoginPage() {
   const { login, error } = useAuthStore();
   const [form, setForm] = useState({ username: "", password: "" });
-  const [loading, setLoading] = useState(false);       // <–– state proses
+  const [loading, setLoading] = useState(false); // <–– state proses
   const navigate = useNavigate();
 
   const handleChange = (e) =>
@@ -39,15 +39,33 @@ export function LoginPage() {
         </div>
         <div className="flex flex-col items-center pt-2 pb-4">
           <h2 className="text-white text-3xl font-semibold">Masuk</h2>
-          <p className="text-white text-base font-normal">Selamat datang kembali</p>
+          <p className="text-white text-base font-normal">
+            Selamat datang kembali
+          </p>
         </div>
 
-        <InputField label="Username" name="username" value={form.username} onChange={handleChange} placeholder="Masukkan Username" />
-        <InputField label="Password" type="password" name="password" value={form.password} onChange={handleChange} placeholder="Masukkan Password" />
+        <InputField
+          label="Username"
+          name="username"
+          value={form.username}
+          onChange={handleChange}
+          placeholder="Masukkan Username"
+        />
+        <InputField
+          label="Password"
+          type="password"
+          name="password"
+          value={form.password}
+          onChange={handleChange}
+          placeholder="Masukkan Password"
+        />
 
         <div className="text-white text-base flex justify-between py-2">
           <p>
-            Belum Punya Akun? <a href="/"><span className="font-semibold">Daftar</span></a>
+            Belum Punya Akun?{" "}
+            <a href="/">
+              <span className="font-semibold">Daftar</span>
+            </a>
           </p>
           <p className="underline">Lupa Kata Sandi</p>
         </div>
@@ -56,13 +74,25 @@ export function LoginPage() {
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
           {/* Tombol: disabled + teks proses */}
-          <Button
-            text={loading ? "Memproses…" : "Masuk"}
-            disabled={loading}
-          />
+          <Button text={loading ? "Memproses…" : "Masuk"} disabled={loading} />
 
           <p className="text-white text-base font-normal text-center">Atau</p>
           <GoogleAuthButton />
+
+          <div className="text-center mt-3">
+  <button
+    type="button"
+    onClick={() => {
+      // pastikan logout user sebelumnya
+      useAuthStore.getState().logout();
+      // redirect ke homepage tanpa login
+      navigate("/homepage");
+    }}
+    className="text-gray-300 underline hover:text-white text-sm"
+  >
+    Lanjut tanpa login
+  </button>
+</div>
         </div>
       </form>
     </div>

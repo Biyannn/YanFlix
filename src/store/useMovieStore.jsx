@@ -1,118 +1,12 @@
-// import { create } from "zustand";
-// import axios from "axios";
-
-// const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
-// const V4_TOKEN = import.meta.env.VITE_TMDB_V4_TOKEN;
-// const BASE_URL = "https://api.themoviedb.org/3";
-
-// export const useMovieStore = create((set) => ({
-//   continueWatchingMovies: [],
-//   popularMovies: [],
-//   topRatedMovies: [],
-//   upcomingMovies: [],
-//   draftMovies: [],
-//   topRatedAll: [],
-//   trendingMovies: [],
-//   continueSeries: [],
-//   popularSeries: [],
-//   topRatedSeries: [],
-//   trendingSeries: [],
-//   upcomingSeries: [],
-//   loading: false,
-
-//   // MODAL SELECTED MOVIE
-//   selectedMovie: null,
-//   selectedMediaType: null, // "movie" atau "tv"
-//   showModal: false,
-
-//   openModal: (movie, mediaType) =>
-//     set({
-//       selectedMovie: movie,
-//       selectedMediaType: mediaType,
-//       showModal: true,
-//     }),
-
-//   closeModal: () =>
-//     set({
-//       selectedMovie: null,
-//       selectedMediaType: null,
-//       showModal: false,
-//     }),
-
-//   // FETCH MOVIES
-//   fetchMovies: async () => {
-//     console.log("Access Token:", ACCESS_TOKEN ? "✅ Loaded" : "❌ Missing");
-//     set({ loading: true });
-//     try {
-//       const headers = {
-//         Authorization: `Bearer ${V4_TOKEN}`,
-//         "Content-Type": "application/json",
-//       };
-//       const [
-//         continueMoviesRes,
-//         popularMoviesRes,
-//         topRatedMoviesRes,
-//         upcomingMoviesRes,
-//         topRatedAllRes,
-//         trendingMoviesRes,
-//         draftMovies,
-//         continueSeriesRes,
-//         popularSeriesRes,
-//         topRatedSeriesRes,
-//         trendingSeriesRes,
-//         upcomingSeriesRes,
-//       ] = await Promise.all([
-//         axios.get(`${BASE_URL}/movie/now_playing?api_key=${API_KEY}&region=ID`),
-//         axios.get(`${BASE_URL}/movie/popular?api_key=${API_KEY}&region=ID`),
-//         axios.get(
-//           `${BASE_URL}/movie/top_rated?api_key=${API_KEY}&language=id-ID&region=ID`
-//         ),
-//         axios.get(`${BASE_URL}/movie/upcoming?api_key=${API_KEY}&region=ID`),
-//         axios.get(`${BASE_URL}/trending/all/day?api_key=${API_KEY}&region=ID`),
-//         axios.get(
-//           `${BASE_URL}/trending/movie/day?api_key=${API_KEY}&region=ID`
-//         ),
-//         axios.get(`${BASE_URL}/account/22161975/watchlist/movies?`, {
-//           headers,
-//         }),
-//         axios.get(`${BASE_URL}/tv/airing_today?api_key=${API_KEY}`),
-//         axios.get(`${BASE_URL}/tv/popular?api_key=${API_KEY}&region=ID`),
-//         axios.get(`${BASE_URL}/tv/top_rated?api_key=${API_KEY}&region=ID`),
-//         axios.get(`${BASE_URL}/trending/tv/day?api_key=${API_KEY}&region=ID`),
-//         axios.get(`${BASE_URL}/tv/on_the_air?api_key=${API_KEY}&region=ID`),
-//       ]);
-
-//       set({
-//         continueWatchingMovies: continueMoviesRes.data.results,
-//         popularMovies: popularMoviesRes.data.results,
-//         topRatedMovies: topRatedMoviesRes.data.results,
-//         upcomingMovies: upcomingMoviesRes.data.results,
-//         draftMovies: draftMovies.data.results,
-//         topRatedAll: topRatedAllRes.data.results,
-//         trendingMovies: trendingMoviesRes.data.results,
-//         continueSeries: continueSeriesRes.data.results,
-//         popularSeries: popularSeriesRes.data.results,
-//         topRatedSeries: topRatedSeriesRes.data.results,
-//         trendingSeries: trendingSeriesRes.data.results,
-//         upcomingSeries: upcomingSeriesRes.data.results,
-//         loading: false,
-//       });
-//     } catch (err) {
-//       console.error("Failed to fetch data:", err);
-//       set({ loading: false });
-//     }
-//   },
-// }));
-
-
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import axios from "axios";
+import { useAuthStore } from "../components/UserProfile/UseAuthStore";
 
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY; // v3 key
-const V4_TOKEN = import.meta.env.VITE_TMDB_V4_TOKEN; // v4 token
+const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = "https://api.themoviedb.org/3";
 
-// --- Helper for v3 (public data) ---
+// helper fetcher
 const v3 = (path, params = {}) =>
   axios.get(`${BASE_URL}${path}`, {
     params: {
@@ -122,103 +16,166 @@ const v3 = (path, params = {}) =>
     },
   });
 
-// --- Helper for v4 (user-specific data) ---
-const v4 = (path, params = {}) =>
-  axios.get(`${BASE_URL}${path}`, {
-    headers: {
-      Authorization: `Bearer ${V4_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    params,
+export const useMovieStore = create(
+  persist(
+    (set, get) => ({
+      // STATE
+      continueWatchingMovies: [],
+      popularMovies: [],
+      topRatedMovies: [],
+      upcomingMovies: [],
+      draftMoviesByUser: {}, // ✅ draft per user
+      topRatedAll: [],
+      trendingMovies: [],
+      continueSeries: [],
+      popularSeries: [],
+      topRatedSeries: [],
+      trendingSeries: [],
+      upcomingSeries: [],
+      loading: false,
+
+      // === GETTER draftMovies untuk user aktif ===
+      getUserDrafts: () => {
+        const { currentUser } = useAuthStore.getState();
+        if (!currentUser || !currentUser.id) {
+          return []; // kalau tidak login, kosong
+        }
+        return get().draftMoviesByUser[currentUser.id] || [];
+      },
+
+      // === ACTION: tambah ke draft ===
+      addToDraft: (movie, mediaType) => {
+        const { currentUser } = useAuthStore.getState();
+
+        if (!currentUser || !currentUser.id) {
+          alert("⚠️ Harus login dulu untuk menambahkan ke DraftPage!");
+          return;
+        }
+
+        set((state) => {
+          const userId = currentUser.id;
+          const userDraft = state.draftMoviesByUser[userId] || [];
+
+          if (userDraft.find((m) => m.id === movie.id)) {
+            alert("⚠️ Film/Series ini sudah ada di DraftPage.");
+            return state;
+          }
+
+          const updatedDraft = [
+            ...userDraft,
+            { ...movie, media_type: mediaType },
+          ];
+          alert("✅ Berhasil ditambahkan ke DraftPage!");
+          return {
+            draftMoviesByUser: {
+              ...state.draftMoviesByUser,
+              [userId]: updatedDraft,
+            },
+          };
+        });
+      },
+
+      // === ACTION: hapus dari draft ===
+      removeFromDraft: (id) => {
+        const { currentUser } = useAuthStore.getState();
+        if (!currentUser || !currentUser.id) return;
+
+        set((state) => {
+          const userId = currentUser.id;
+          const userDraft = state.draftMoviesByUser[userId] || [];
+          const updatedDraft = userDraft.filter((m) => m.id !== id);
+
+          return {
+            draftMoviesByUser: {
+              ...state.draftMoviesByUser,
+              [userId]: updatedDraft,
+            },
+          };
+        });
+      },
+
+      // === ACTION: kosongkan draft saat logout ===
+      clearDraft: () => {
+  const { currentUser } = useAuthStore.getState();
+  if (!currentUser || !currentUser.id) {
+    return set({ draftMoviesByUser: {} }); // kalau logout tanpa user, draft semua user kosongkan
+  }
+
+  set((state) => {
+    const newDrafts = { ...state.draftMoviesByUser };
+    newDrafts[currentUser.id] = [];
+    return { draftMoviesByUser: newDrafts, selectedMovie: null };
   });
+},
 
-export const useMovieStore = create((set) => ({
-  // STATE
-  continueWatchingMovies: [],
-  popularMovies: [],
-  topRatedMovies: [],
-  upcomingMovies: [],
-  draftMovies: [],
-  topRatedAll: [],
-  trendingMovies: [],
-  continueSeries: [],
-  popularSeries: [],
-  topRatedSeries: [],
-  trendingSeries: [],
-  upcomingSeries: [],
-  loading: false,
 
-  // MODAL STATE
-  selectedMovie: null,
-  selectedMediaType: null,
-  showModal: false,
-
-  openModal: (movie, mediaType) =>
-    set({
-      selectedMovie: movie,
-      selectedMediaType: mediaType,
-      showModal: true,
-    }),
-
-  closeModal: () =>
-    set({
+      // === MODAL ===
       selectedMovie: null,
       selectedMediaType: null,
       showModal: false,
+
+      openModal: (movie, mediaType) =>
+        set({
+          selectedMovie: movie,
+          selectedMediaType: mediaType,
+          showModal: true,
+        }),
+
+      closeModal: () =>
+        set({ selectedMovie: null, selectedMediaType: null, showModal: false }),
+
+      // === FETCH MOVIES ===
+      fetchMovies: async () => {
+        set({ loading: true });
+        try {
+          const [
+            continueMoviesRes,
+            popularMoviesRes,
+            topRatedMoviesRes,
+            upcomingMoviesRes,
+            topRatedAllRes,
+            trendingMoviesRes,
+            continueSeriesRes,
+            popularSeriesRes,
+            topRatedSeriesRes,
+            trendingSeriesRes,
+            upcomingSeriesRes,
+          ] = await Promise.all([
+            v3("/movie/now_playing"),
+            v3("/movie/popular"),
+            v3("/movie/top_rated", { language: "id-ID" }),
+            v3("/movie/upcoming"),
+            v3("/trending/all/day"),
+            v3("/trending/movie/day"),
+            v3("/tv/airing_today"),
+            v3("/tv/popular"),
+            v3("/tv/top_rated"),
+            v3("/trending/tv/day"),
+            v3("/tv/on_the_air"),
+          ]);
+
+          set({
+            continueWatchingMovies: continueMoviesRes.data.results,
+            popularMovies: popularMoviesRes.data.results,
+            topRatedMovies: topRatedMoviesRes.data.results,
+            upcomingMovies: upcomingMoviesRes.data.results,
+            topRatedAll: topRatedAllRes.data.results,
+            trendingMovies: trendingMoviesRes.data.results,
+            continueSeries: continueSeriesRes.data.results,
+            popularSeries: popularSeriesRes.data.results,
+            topRatedSeries: topRatedSeriesRes.data.results,
+            trendingSeries: trendingSeriesRes.data.results,
+            upcomingSeries: upcomingSeriesRes.data.results,
+            loading: false,
+          });
+        } catch (err) {
+          console.error("Failed to fetch data:", err);
+          set({ loading: false });
+        }
+      },
     }),
-
-  // FETCH MOVIES & SERIES
-  fetchMovies: async () => {
-    console.log("API_KEY loaded:", !!API_KEY, "V4_TOKEN loaded:", !!V4_TOKEN);
-    set({ loading: true });
-
-    try {
-      const [
-        continueMoviesRes,
-        popularMoviesRes,
-        topRatedMoviesRes,
-        upcomingMoviesRes,
-        topRatedAllRes,
-        trendingMoviesRes,
-        draftMoviesRes,
-        continueSeriesRes,
-        popularSeriesRes,
-        topRatedSeriesRes,
-        trendingSeriesRes,
-        upcomingSeriesRes,
-      ] = await Promise.all([
-        v3("/movie/now_playing"),
-        v3("/movie/popular"),
-        v3("/movie/top_rated", { language: "id-ID" }),
-        v3("/movie/upcoming"),
-        v3("/trending/all/day"),
-        v3("/trending/movie/day"),
-        v4("/account/22161975/watchlist/movies"),
-        v3("/tv/airing_today"),
-        v3("/tv/popular"),
-        v3("/tv/top_rated"),
-        v3("/trending/tv/day"),
-        v3("/tv/on_the_air"),
-      ]);
-
-      set({
-        continueWatchingMovies: continueMoviesRes.data.results,
-        popularMovies: popularMoviesRes.data.results,
-        topRatedMovies: topRatedMoviesRes.data.results,
-        upcomingMovies: upcomingMoviesRes.data.results,
-        draftMovies: draftMoviesRes.data.results,
-        topRatedAll: topRatedAllRes.data.results,
-        trendingMovies: trendingMoviesRes.data.results,
-        continueSeries: continueSeriesRes.data.results,
-        popularSeries: popularSeriesRes.data.results,
-        topRatedSeries: topRatedSeriesRes.data.results,
-        trendingSeries: trendingSeriesRes.data.results,
-        upcomingSeries: upcomingSeriesRes.data.results,
-        loading: false,
-      });
-    } catch (err) {
-      console.error("Failed to fetch data:", err);
-      set({ loading: false });
+    {
+      name: "movie-storage", // ✅ persist ke localStorage
     }
-  },
-}));
+  )
+);

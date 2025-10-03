@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import axios from "axios";
+import { useMovieStore } from "../../store/useMovieStore";
 
 const baseURL = "https://67f14ef3c733555e24acca22.mockapi.io/User";
 
@@ -12,15 +13,16 @@ export const useAuthStore = create(
       error: null,
 
       register: async (username, password) => {
+        if (!username || !password) {
+          throw new Error("Username dan password wajib diisi");
+        }
         set({ loading: true, error: null });
         try {
-          const res = await axios.post(baseURL, {
-            username,
-            password,
-            name: username, // simpan juga di field name
-          });
-          // otomatis login setelah register
-          set({ currentUser: res.data, loading: false });
+          const res = await axios.post(baseURL, { username, password, name: username });
+          // hanya set user kalau valid
+          if (res.data?.username && res.data?.password) {
+            set({ currentUser: res.data, loading: false });
+          }
           return res.data;
         } catch (err) {
           set({ error: err.message, loading: false });
@@ -44,10 +46,25 @@ export const useAuthStore = create(
         }
       },
 
-      logout: () => set({ currentUser: null }),
+     logout: () => {
+  useMovieStore.getState().clearDraft();
+  set({ currentUser: null });
+},
+
+
     }),
     {
-      name: "auth-storage", // simpan di localStorage
+      name: "auth-storage",
+      partialize: (state) => ({
+        // simpan cuma field penting
+        currentUser: state.currentUser
+          ? {
+              id: state.currentUser.id,
+              username: state.currentUser.username,
+              password: state.currentUser.password,
+            }
+          : null,
+      }),
     }
   )
 );
